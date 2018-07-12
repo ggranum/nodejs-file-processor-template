@@ -1,54 +1,63 @@
 import * as fs from "fs"
+import {Injectable} from "injection-js"
 import * as numeral from "numeral"
 import * as Path from "path"
-
+import * as mkdirp from "mkdirp"
+import "reflect-metadata"
 import {FileProcessor} from "../processor/file-processor"
 import {FileInfo} from "../util/io/file-info"
-import {WatcherConfig} from "./watcher-config"
+import {ProcessorOutput} from "./model/processor-output.model"
+import {WatcherConfiguration} from "./watcher-configuration"
 
+const sleepTimeout = 50
+
+@Injectable()
 export class FileWatcher {
 
   private readonly fileQueue: FileInfo[] = []
 
   private processing: boolean = false
-  private readonly processDirPath: string
-  private readonly archiveDirPath: string
-  private readonly errorDirPath: string
+  private inProcess: FileInfo[] = []
 
-  constructor(config: WatcherConfig, private readonly processor: FileProcessor) {
-    this.processDirPath = config.processDirPath
-    this.archiveDirPath = config.archiveDirPath
-    this.errorDirPath = config.errorDirPath
+  constructor(private cfg: WatcherConfiguration, private readonly processor: FileProcessor) {
+
   }
 
-  start() {
+  async start(): Promise<void> {
     this.checkDirsExist()
-    this.processFiles().then(() => console.log("FileWatcher", "Done processing files."))
+    this.queueFiles().then(() => console.log("FileWatcher", "Done processing files."))
+    await this.processNextBatch()
   }
 
-  private async processFiles(): Promise<void> {
-    const filesToProcess: FileInfo[] = this.determineFilesToProcess(this.processDirPath)
-    console.log("FileWatcher#processFiles",
-      "Will proceed with files:\n\t",
-      filesToProcess.map(info => info.path).join(",\n\t"))
-    this.fileQueue.push(...filesToProcess)
-    await this.processNext()
+  private async queueFiles(): Promise<void> {
+    const filesToProcess: FileInfo[] = this.determineFilesToProcess(this.cfg.processDirPath)
+    if (filesToProcess.length) {
+      console.log("Found the following files to process: \n\t", filesToProcess.map(info => info.fullPath).join(",\n\t"))
+      this.fileQueue.push(...filesToProcess)
+    } else {
+      console.warn("No files found for processing!!")
+    }
   }
 
-  private determineFilesToProcess(dirPath: string): FileInfo[] {
+  private determineFilesToProcess(folderPath: string): FileInfo[] {
     let result: FileInfo[] = []
-    const fileNames: string[] = fs.readdirSync(dirPath)
+    const fileNames: string[] = fs.readdirSync(folderPath)
     fileNames.forEach(name => {
-      const path: string = Path.join(dirPath, name)
-      const fileInfo: FileInfo = {name: name, path: path, stats: fs.statSync(path)}
+      const path: string = Path.join(folderPath, name)
+      const fileInfo: FileInfo = {
+        name      : name,
+        folderPath: folderPath,
+        fullPath  : path,
+        stats     : fs.statSync(path),
+      }
       const accept = this.processor.acceptPath(fileInfo)
       if (accept) {
         if (fileInfo.stats.isDirectory()) {
-          result = result.concat(this.determineFilesToProcess(fileInfo.path))
+          result = result.concat(this.determineFilesToProcess(fileInfo.fullPath))
         } else if (fileInfo.stats.isFile()) {
           result.push(fileInfo)
         } else {
-          throw new Error(`Unhandled stats case for path: ${fileInfo.path} (${fileInfo.stats})`)
+          throw new Error(`Unhandled stats case for path: ${fileInfo.fullPath} (${fileInfo.stats})`)
         }
       }
     })
@@ -56,36 +65,38 @@ export class FileWatcher {
   }
 
   private checkDirsExist() {
-    if (!fs.existsSync(this.processDirPath)) {
-      throw new Error(`Directory to check for files for processing does not exist! '${this.processDirPath}'`)
+    if (!fs.existsSync(this.cfg.processDirPath)) {
+      throw new Error(`Directory to check for files for processing does not exist! '${this.cfg.processDirPath}'`)
     }
-    if (!fs.existsSync(this.archiveDirPath)) {
-      console.log(`Directory to archive files after processing does not exist. Directory '${this.archiveDirPath}' will be  created`)
-      fs.mkdirSync(this.archiveDirPath)
+    if (!fs.existsSync(this.cfg.archiveDirPath)) {
+      console.log(`Directory to archive files after processing does not exist. Directory '${this.cfg.archiveDirPath}' will be  created`)
+      fs.mkdirSync(this.cfg.archiveDirPath)
     }
-    if (!fs.existsSync(this.errorDirPath)) {
-      console.log(`Directory to archive failed files after processing does not exist. Directory '${this.errorDirPath}' will be  created`)
-      fs.mkdirSync(this.errorDirPath)
+    if (!fs.existsSync(this.cfg.errorDirPath)) {
+      console.log(`Directory to archive failed files after processing does not exist. Directory '${this.cfg.errorDirPath}' will be  created`)
+      fs.mkdirSync(this.cfg.errorDirPath)
     }
   }
 
-  private async processNext() {
+  /**
+   * Processes the current queue until it's empty. It is possible to add files into the queue while this method is
+   * running.
+   *
+   * The current implementation does not auto-scan the base directory for new additions, but this method would
+   * accommodate such a change without modification.
+   *
+   */
+  private async processNextBatch() {
     try {
       if (!this.processing) {
         this.processing = true
         while (this.fileQueue.length) {
+          await this.blockOnProcessCount()
           const info = this.fileQueue.pop()!
-          console.log("[Info]", "FileWatcher#processNext - BEGIN", info.name)
-          const start = Date.now()
-          const success = await this.processNextFile(info)
-          const delta = Date.now() - start
-          if (success) {
-            console.log("[Info]", "FileWatcher#processNext - COMPLETE", numeral(delta / 1000.0).format("0.000"))
-            await this.archive(info)
-          } else {
-            console.log("[Warn]", "FileWatcher#processNext - COMPLETE (with error)", numeral(delta / 1000.0).format("0.000"))
-            this.moveToErrorDir(info.path)
-          }
+          this.inProcess.push(info)
+          this.processNextFile(info).then(success => {
+            this.inProcess = this.inProcess.filter(i => i !== info)
+          })
         }
         console.log("FileWatcher#processNext", "DONE")
         this.processing = false
@@ -96,36 +107,89 @@ export class FileWatcher {
   }
 
 
+  private async processNextFile(info: FileInfo): Promise<boolean> {
+    let success: boolean = false
+    console.log("[Info]", "FileWatcher#processNext - BEGIN", info.name)
+    const start = Date.now()
+    try {
+      const rawContent = fs.readFileSync(info.fullPath, {encoding: "UTF8"})
+      const output = await this.processor.process(info, rawContent)
+      await this.handleProcessSuccess(info, output, start)
+      success = true
+    } catch (e) {
+      await this.handleProcessFailure(info, e, start)
+      success = false
+    }
+    return success
+  }
+
+  private async handleProcessSuccess(info: FileInfo, output: ProcessorOutput[], start: number): Promise<void> {
+    const delta = Date.now() - start
+    console.log("[Info]", "FileWatcher#processNext - COMPLETE", numeral(delta / 1000.0).format("0.000"))
+    await this.archive(info)
+  }
+
+  private async handleProcessFailure(info: FileInfo, e: any, start: number) {
+    const delta = Date.now() - start
+    console.log("[Error]", "FileWatcher#process", "FAILED:", info.fullPath, numeral(delta / 1000.0).format("0.000"), e)
+    await this.moveToErrorDir(info)
+  }
+
+  private blockOnProcessCount(): Promise<void> {
+    let count = 0
+    return new Promise((resolve, reject) => {
+      const check = () => {
+        if (count % (1000 / sleepTimeout) === 0) {
+          console.log(`FileWatcher#check: Waiting on in process files (${count * sleepTimeout / 1000} seconds)`)
+        }
+        count++
+        if (this.inProcess.length < this.cfg.maxSimultaneousProcesses) {
+          resolve()
+        } else {
+          setTimeout(check, sleepTimeout)
+        }
+      }
+      setTimeout(check, sleepTimeout)
+    })
+  }
+
+  private getRelativeFolderPath(info: FileInfo, fromDir: string) {
+    const otherPath = Path.normalize(fromDir)
+    const processPath = Path.normalize(this.cfg.processDirPath)
+    const folderPath = info.folderPath.replace(processPath, otherPath)
+    return folderPath
+  }
+
   private archive(info: FileInfo) {
     try {
-      const folder = this.archiveDirPath + Path.sep
-      info.path = this.moveFileTo(info.path, folder + info.name)
+      const folderPath = this.getRelativeFolderPath(info, this.cfg.archiveDirPath)
+      this.moveFileTo(info.fullPath, folderPath, info.name)
     } catch (e) {
       console.log("[Error]", "FileWatcher#archive", e)
     }
   }
 
-  private moveToErrorDir(path: string) {
-    return this.moveFileTo(path, Path.join(this.errorDirPath, Path.basename(path)))
+  private moveToErrorDir(info: FileInfo) {
+    const folderPath = this.getRelativeFolderPath(info, this.cfg.errorDirPath)
+    fs.mkdirSync(folderPath);
+    this.moveFileTo(info.fullPath, folderPath, info.name)
   }
 
-  private moveFileTo(path: string, newPath: string): string {
+
+  private moveFileTo(path: string, newFolderPath:string, newName: string): string {
+    const newPath = Path.join(newFolderPath, newName)
+
+    try{
+      mkdirp.sync(newFolderPath)
+    } catch (e) {
+      console.log("[Error]", "FileWatcher#moveFileTo", `There has been an error creating a directory: ${newPath} could not be created.`)
+    }
+
+    if(!this.cfg.allowFileOverWrites){
+
+    }
+
     fs.renameSync(path, newPath)
     return newPath
   }
-
-  private async processNextFile(info: FileInfo): Promise<boolean> {
-    let success: boolean = false
-    try {
-      const rawContent = fs.readFileSync(info.path, {encoding: "UTF8"})
-      const outputContent = await this.processor.process(info, rawContent)
-      success = true
-    } catch (e) {
-      console.log("[Error]", "FileWatcher#process", "FAILED:", info.path)
-      console.log("[Error]", e)
-    }
-    return success
-  }
-
-
 }

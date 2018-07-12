@@ -1,4 +1,4 @@
-import {Numeral} from "../numeral-util"
+import {Numeral} from "../import-helpers/numeral-util"
 import {PositiveIntegerValue} from "../helper-types"
 
 

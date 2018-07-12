@@ -1,3 +1,4 @@
+import {ProcessorOutput} from "../file-watcher/model/processor-output.model"
 import {FileInfo} from "../util/io/file-info"
 
 export abstract class FileProcessor {
@@ -11,14 +12,11 @@ export abstract class FileProcessor {
 
 
   /**
-   * do stuff with file contents here.
+   * Map your file contents to something useful here. Return one or more ProcessorOutput objects to write the
+   * converted contents into new files.
    * @param info
    * @param contents
    */
-  abstract async process(info: FileInfo, contents: string): Promise<string>
-
-
-  abstract getOutputFileName(info: FileInfo): string
-
+  abstract async process(info: FileInfo, contents: string): Promise<ProcessorOutput[]>
 
 }
