@@ -17,4 +17,5 @@ Thumbs.db
 !/.idea/codeStyleSettings.xml
 !/.idea/misc.xml
 !/.idea/inspectionProfiles
+!/.idea/runConfigurations
 /src/environments/dev.json
