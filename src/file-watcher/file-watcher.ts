@@ -156,7 +156,8 @@ export class FileWatcher {
   private getRelativeFolderPath(info: FileInfo, fromDir: string) {
     const otherPath = Path.normalize(fromDir)
     const processPath = Path.normalize(this.cfg.processDirPath)
-    const folderPath = info.folderPath.replace(processPath, otherPath)
+    const infoFolderPath = Path.normalize(info.folderPath)
+    const folderPath = infoFolderPath.replace(processPath, otherPath)
     return folderPath
   }
 
