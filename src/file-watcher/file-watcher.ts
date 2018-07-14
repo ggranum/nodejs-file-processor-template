@@ -1,8 +1,8 @@
 import * as fs from "fs"
 import {Injectable} from "injection-js"
+import * as mkdirp from "mkdirp"
 import * as numeral from "numeral"
 import * as Path from "path"
-import * as mkdirp from "mkdirp"
 import "reflect-metadata"
 import {FileProcessor} from "../processor/file-processor"
 import {FileInfo} from "../util/io/file-info"
@@ -171,25 +171,22 @@ export class FileWatcher {
 
   private moveToErrorDir(info: FileInfo) {
     const folderPath = this.getRelativeFolderPath(info, this.cfg.errorDirPath)
-    fs.mkdirSync(folderPath);
+    fs.mkdirSync(folderPath)
     this.moveFileTo(info.fullPath, folderPath, info.name)
   }
 
-
-  private moveFileTo(path: string, newFolderPath:string, newName: string): string {
+  private moveFileTo(path: string, newFolderPath: string, newName: string): void {
     const newPath = Path.join(newFolderPath, newName)
-
-    try{
+    try {
       mkdirp.sync(newFolderPath)
+      if (!this.cfg.allowFileOverWrites && fs.existsSync(newPath)) {
+        console.log("[Error]", "FileWatcher#moveFileTo", `File '${newPath}' already exists! Skipping move of file ${path}'`)
+      } else {
+        fs.renameSync(path, newPath)
+        console.log("FileWatcher#moveFileTo/success:", newPath)
+      }
     } catch (e) {
       console.log("[Error]", "FileWatcher#moveFileTo", `There has been an error creating a directory: ${newPath} could not be created.`)
     }
-
-    if(!this.cfg.allowFileOverWrites){
-
-    }
-
-    fs.renameSync(path, newPath)
-    return newPath
   }
 }
