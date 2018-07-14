@@ -6,7 +6,7 @@ export class DemoFileProcessor extends FileProcessor {
 
 
   acceptPath(fileInfo: FileInfo): boolean {
-    return fileInfo.stats.isFile() // || fileInfo.?????????
+    return true
   }
 
   async process(info: FileInfo, contents: string): Promise<ProcessorOutput[]> {

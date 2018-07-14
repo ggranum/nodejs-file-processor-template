@@ -18,9 +18,15 @@ export class FileWatcher {
 
   private processing: boolean = false
   private inProcess: FileInfo[] = []
+  private cfg: WatcherConfiguration
 
-  constructor(private cfg: WatcherConfiguration, private readonly processor: FileProcessor) {
-
+  constructor(cfg: WatcherConfiguration, private readonly processor: FileProcessor) {
+    this.cfg = cfg.clone({
+      processDirPath: Path.normalize(cfg.processDirPath),
+      archiveDirPath: cfg.archiveDirPath ? Path.normalize(cfg.archiveDirPath) : undefined,
+      errorDirPath  : Path.normalize(cfg.errorDirPath),
+      outputDirPath : Path.normalize(cfg.outputDirPath),
+    })
   }
 
   async start(): Promise<void> {
@@ -45,7 +51,7 @@ export class FileWatcher {
     fileNames.forEach(name => {
       const path: string = Path.join(folderPath, name)
       const fileInfo: FileInfo = {
-        name      : name,
+        fileName  : name,
         folderPath: folderPath,
         fullPath  : path,
         stats     : fs.statSync(path),
@@ -75,6 +81,11 @@ export class FileWatcher {
     if (!fs.existsSync(this.cfg.errorDirPath)) {
       console.log(`Directory to archive failed files after processing does not exist. Directory '${this.cfg.errorDirPath}' will be  created`)
       fs.mkdirSync(this.cfg.errorDirPath)
+    }
+
+    if (!fs.existsSync(this.cfg.outputDirPath)) {
+      console.log(`Output directory does not exist. Directory '${this.cfg.outputDirPath}' will be  created`)
+      fs.mkdirSync(this.cfg.outputDirPath)
     }
   }
 
@@ -109,12 +120,14 @@ export class FileWatcher {
 
   private async processNextFile(info: FileInfo): Promise<boolean> {
     let success: boolean = false
-    console.log("[Info]", "FileWatcher#processNext - BEGIN", info.name)
+    console.log("[Info]", "FileWatcher#processNext - BEGIN", info.fileName)
     const start = Date.now()
     try {
       const rawContent = fs.readFileSync(info.fullPath, {encoding: "UTF8"})
       const output = await this.processor.process(info, rawContent)
       await this.handleProcessSuccess(info, output, start)
+      const delta = Date.now() - start
+      console.log("[Info]", "FileWatcher#processNext - COMPLETE", numeral(delta / 1000.0).format("0.000"))
       success = true
     } catch (e) {
       await this.handleProcessFailure(info, e, start)
@@ -124,9 +137,8 @@ export class FileWatcher {
   }
 
   private async handleProcessSuccess(info: FileInfo, output: ProcessorOutput[], start: number): Promise<void> {
-    const delta = Date.now() - start
-    console.log("[Info]", "FileWatcher#processNext - COMPLETE", numeral(delta / 1000.0).format("0.000"))
-    await this.archive(info)
+    this.archive(info)
+    this.saveOutput(info, output)
   }
 
   private async handleProcessFailure(info: FileInfo, e: any, start: number) {
@@ -153,19 +165,19 @@ export class FileWatcher {
     })
   }
 
-  private getRelativeFolderPath(info: FileInfo, fromDir: string) {
-    const otherPath = Path.normalize(fromDir)
-    const processPath = Path.normalize(this.cfg.processDirPath)
-    const infoFolderPath = Path.normalize(info.folderPath)
-    const folderPath = infoFolderPath.replace(processPath, otherPath)
-    return folderPath
+  private getRelativeFolderPath(info: FileInfo, destinationRootPath: string) {
+    destinationRootPath = Path.normalize(destinationRootPath)
+    const targetFileProcessPath = Path.normalize(info.folderPath)
+    /* The path from the root of process dir to the target file: */
+    const relativeFolderPath = Path.normalize(targetFileProcessPath.replace(this.cfg.processDirPath, ''))
+    return Path.join(destinationRootPath, relativeFolderPath)
   }
 
   private archive(info: FileInfo) {
     if (this.cfg.archiveDirPath) {
       try {
         const folderPath = this.getRelativeFolderPath(info, this.cfg.archiveDirPath)
-        this.moveFileTo(info.fullPath, folderPath, info.name)
+        this.moveFileTo(info.fullPath, folderPath, info.fileName)
       } catch (e) {
         console.log("[Error]", "FileWatcher#archive", e)
       }
@@ -175,7 +187,7 @@ export class FileWatcher {
   private moveToErrorDir(info: FileInfo) {
     const folderPath = this.getRelativeFolderPath(info, this.cfg.errorDirPath)
     fs.mkdirSync(folderPath)
-    this.moveFileTo(info.fullPath, folderPath, info.name)
+    this.moveFileTo(info.fullPath, folderPath, info.fileName)
   }
 
   private moveFileTo(path: string, newFolderPath: string, newName: string): void {
@@ -191,5 +203,35 @@ export class FileWatcher {
     } catch (e) {
       console.log("[Error]", "FileWatcher#moveFileTo", `There has been an error creating a directory: ${newPath} could not be created.`)
     }
+  }
+
+  private async saveOutput(info: FileInfo, outputs: ProcessorOutput[]): Promise<void> {
+    const defaultOutputFolderPath = this.getRelativeFolderPath(info, this.cfg.outputDirPath)
+    outputs.forEach(output => {
+      const folderPath = this.getOutputPath(output.folderPath, defaultOutputFolderPath)
+      mkdirp.sync(folderPath)
+      const filePath = Path.join(folderPath, output.fileName || info.fileName);
+      fs.writeFile(filePath, output.content, (err) => {
+        if (err) {
+          console.log("[Error]", "FileWatcher#saveOutput",
+            `Could not write output file to '${filePath}' for input file ${info.fullPath}`, err)
+        } else {
+          console.log(`FileWatcher#wrote output file to '${filePath}'`)
+        }
+      })
+
+    })
+  }
+
+  private getOutputPath(providedOutPath: string | undefined, defaultOutputFolderPath: string): string {
+    let result: string
+    if (!providedOutPath) {
+      result = defaultOutputFolderPath
+    } else if (Path.isAbsolute(providedOutPath)) {
+      result = providedOutPath
+    } else {
+      result = Path.join(this.cfg.outputDirPath, providedOutPath)
+    }
+    return result
   }
 }

@@ -1,7 +1,7 @@
 import {Stats} from "fs"
 
 export interface FileInfo {
-  name: string;
+  fileName: string;
   fullPath: string
   folderPath: string
   stats: Stats

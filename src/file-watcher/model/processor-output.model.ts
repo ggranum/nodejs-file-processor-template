@@ -11,6 +11,7 @@
  * If `path` is specified and is absolute, it will be used directly.
  */
 export interface ProcessorOutput {
-  readonly path?: string;
+  readonly folderPath?: string;
+  readonly fileName?: string;
   readonly content: string;
 }

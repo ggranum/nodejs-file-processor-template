@@ -1,19 +1,20 @@
+import {Injectable} from "injection-js"
 import {LogLevel} from "../util/logging/log-level"
 
-export class WatcherConfiguration {
+export interface WatcherConfigurationJson {
   /**
    * While nodejs runs in one thread, it's possible to create situations where multiple files are 'in process'
    * simultaneously. If your files are hundreds of megabytes in size, that could break things.
    * @type {number} The maximum number of files to have 'in process' (open and read into memory') at once.
    */
-  readonly maxSimultaneousProcesses: number = 1;
+  maxSimultaneousProcesses: number
 
   /**
    * The base directory which will be scanned for files to process.
    * This directory must exist. If it does not, an error will be thrown.
    * @type {string} The path, either relative to the directory this application is started from, or absolute.
    */
-  readonly processDirPath: string = "./temp/process";
+  processDirPath: string
 
   /**
    * If true, scan child directories of processDirPath.
@@ -24,20 +25,22 @@ export class WatcherConfiguration {
    *
    * @type {boolean} Set to false to simple skip processing child directories.
    */
-  readonly recursive: boolean = true;
+  recursive: boolean
 
   /**
-   * The path to move processed files into. Once successfully processed, the source file will be moved into this
-   * directory.
+   * The (optional) path to move processed files into. Once successfully processed the source file will be moved into
+   * this directory, if provided. If not provided the files will remain in place.
    *
    * If `flattenFileTree` is true, the directory hierarchy will be kept as well, otherwise all files
    * will be copied 'flat', which could potentially lead to file overwrites.
    *
    * If this path does not exist it will be created.
    *
+   * If no value is provided the original files will not be moved.
+   *
    * @type {string} A valid file path.
    */
-  readonly archiveDirPath: string | undefined // = "./temp/archive";
+  archiveDirPath?: string
 
   /**
    * The path to move files that error out during processing into.
@@ -50,7 +53,7 @@ export class WatcherConfiguration {
    *
    * @type {string} A valid file path.
    */
-  readonly errorDirPath: string = "./temp/errors";
+  errorDirPath: string
 
   /**
    * The path to move the output from a processed file, assuming there is an output.
@@ -63,7 +66,7 @@ export class WatcherConfiguration {
    *
    * @type {string} A valid file path.
    */
-  readonly outputDirPath: string = "./temp/output";
+  outputDirPath: string
 
 
   /**
@@ -72,7 +75,7 @@ export class WatcherConfiguration {
    * Only makes sense if `recursive` is true and the processor accepts child directories.
    * @type {boolean}
    */
-  readonly flattenFileTree: boolean = false;
+  flattenFileTree: boolean
 
 
   /**
@@ -83,6 +86,66 @@ export class WatcherConfiguration {
    *
    * @type {boolean}
    */
-  readonly allowFileOverWrites: boolean = false;
-  readonly logLevel: LogLevel = LogLevel.Trace;
+  allowFileOverWrites: boolean
+  logLevel: LogLevel
+}
+
+const defaultConfig: WatcherConfigurationJson = {
+  processDirPath          : "./temp/process",
+  archiveDirPath          : undefined,
+  errorDirPath            : "./temp/errors",
+  outputDirPath           : "./temp/output",
+  recursive               : true,
+  flattenFileTree         : false,
+  maxSimultaneousProcesses: 1,
+  allowFileOverWrites     : false,
+  logLevel                : LogLevel.Trace,
+}
+
+
+@Injectable()
+export class WatcherConfiguration {
+
+  readonly processDirPath: string = "./temp/process"
+  readonly archiveDirPath?: string
+  readonly errorDirPath: string = "./temp/errors"
+  readonly outputDirPath: string = "./temp/output"
+  readonly recursive: boolean = true
+  readonly flattenFileTree: boolean = false
+  readonly maxSimultaneousProcesses: number = 1
+  readonly allowFileOverWrites: boolean = false
+  readonly logLevel: LogLevel = LogLevel.Trace
+
+
+  constructor(cfg?: WatcherConfigurationJson) {
+    const init: WatcherConfigurationJson = {...defaultConfig, ...cfg}
+    this.processDirPath = init.processDirPath
+    this.archiveDirPath = init.archiveDirPath
+    this.errorDirPath = init.errorDirPath
+    this.outputDirPath = init.outputDirPath
+    this.recursive = init.recursive
+    this.flattenFileTree = init.flattenFileTree
+    this.maxSimultaneousProcesses = init.maxSimultaneousProcesses
+    this.allowFileOverWrites = init.allowFileOverWrites
+    this.logLevel = init.logLevel
+  }
+
+  clone(update?: Partial<WatcherConfigurationJson>): WatcherConfiguration {
+    return new WatcherConfiguration({...this.toJson(), ...update})
+  }
+
+  toJson(): WatcherConfigurationJson {
+    return {
+      processDirPath          : this.processDirPath,
+      archiveDirPath          : this.archiveDirPath,
+      errorDirPath            : this.errorDirPath,
+      outputDirPath           : this.outputDirPath,
+      recursive               : this.recursive,
+      flattenFileTree         : this.flattenFileTree,
+      maxSimultaneousProcesses: this.maxSimultaneousProcesses,
+      allowFileOverWrites     : this.allowFileOverWrites,
+      logLevel                : this.logLevel,
+    }
+  }
+
 }
