@@ -22,7 +22,7 @@ export class WatcherConfiguration {
    * `recursive` is set to false, file paths representing directories will simply not be passed to the acceptFile
    * method.
    *
-   * @type {boolean:true} Set to false to simple skip processing child directories.
+   * @type {boolean} Set to false to simple skip processing child directories.
    */
   readonly recursive: boolean = true;
 
@@ -37,7 +37,7 @@ export class WatcherConfiguration {
    *
    * @type {string} A valid file path.
    */
-  readonly archiveDirPath: string = "./temp/archive";
+  readonly archiveDirPath: string | undefined // = "./temp/archive";
 
   /**
    * The path to move files that error out during processing into.

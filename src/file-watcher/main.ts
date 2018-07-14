@@ -10,7 +10,7 @@ export class Main {
   async start() {
     console.log("Main#start", "Starting File Watcher")
     try {
-      this.fileWatcher.start()
+      await this.fileWatcher.start()
     } catch (e) {
       console.error("[Fatal]", "Main#start", "Something bad happened!", e)
     }

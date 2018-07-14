@@ -68,7 +68,7 @@ export class FileWatcher {
     if (!fs.existsSync(this.cfg.processDirPath)) {
       throw new Error(`Directory to check for files for processing does not exist! '${this.cfg.processDirPath}'`)
     }
-    if (!fs.existsSync(this.cfg.archiveDirPath)) {
+    if (this.cfg.archiveDirPath !== undefined && !fs.existsSync(this.cfg.archiveDirPath)) {
       console.log(`Directory to archive files after processing does not exist. Directory '${this.cfg.archiveDirPath}' will be  created`)
       fs.mkdirSync(this.cfg.archiveDirPath)
     }
@@ -162,11 +162,13 @@ export class FileWatcher {
   }
 
   private archive(info: FileInfo) {
-    try {
-      const folderPath = this.getRelativeFolderPath(info, this.cfg.archiveDirPath)
-      this.moveFileTo(info.fullPath, folderPath, info.name)
-    } catch (e) {
-      console.log("[Error]", "FileWatcher#archive", e)
+    if (this.cfg.archiveDirPath) {
+      try {
+        const folderPath = this.getRelativeFolderPath(info, this.cfg.archiveDirPath)
+        this.moveFileTo(info.fullPath, folderPath, info.name)
+      } catch (e) {
+        console.log("[Error]", "FileWatcher#archive", e)
+      }
     }
   }
 
