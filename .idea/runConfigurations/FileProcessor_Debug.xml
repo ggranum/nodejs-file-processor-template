@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="FileProcessor Debug" type="NodeJSConfigurationType" factoryName="Node.js" node-parameters="--inspect --require ts-node/register" path-to-js-file="src/file-watcher/main.ts" working-dir="$PROJECT_DIR$">
+  <configuration default="false" name="FileProcessor Debug" type="NodeJSConfigurationType" node-parameters="--require ts-node/register" path-to-js-file="src/file-watcher/main.ts" working-dir="$PROJECT_DIR$">
     <envs>
       <env name="env" value="dev" />
     </envs>

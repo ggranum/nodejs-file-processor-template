@@ -8,7 +8,7 @@ import {FileWatcher} from "./file-watcher"
 import {WatcherConfiguration} from "./watcher-configuration"
 
 const watcherConfig = new WatcherConfiguration({
-  processDirPath          : "./temp/process/nope",
+  processDirPath          : "./temp/process",
   errorDirPath            : "./temp/errors",
   outputDirPath           : "./temp/output",
   // Disable archiving by virtue of not setting a path.

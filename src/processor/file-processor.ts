@@ -14,9 +14,9 @@ export abstract class FileProcessor {
   /**
    * Map your file contents to something useful here. Return one or more ProcessorOutput objects to write the
    * converted contents into new files.
+   * Implementations of this method should be `async`.
    * @param info
-   * @param contents
    */
-  abstract async process(info: FileInfo, contents: string): Promise<ProcessorOutput[]>
+  abstract /*async*/ process(info: FileInfo): Promise<ProcessorOutput[]>
 
 }

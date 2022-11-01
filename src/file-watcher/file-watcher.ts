@@ -123,8 +123,7 @@ export class FileWatcher {
     console.log("[Info]", "FileWatcher#processNext - BEGIN", info.fileName)
     const start = Date.now()
     try {
-      const rawContent = fs.readFileSync(info.fullPath, {encoding: "UTF8"})
-      const output = await this.processor.process(info, rawContent)
+      const output = await this.processor.process(info)
       await this.handleProcessSuccess(info, output, start)
       const delta = Date.now() - start
       console.log("[Info]", "FileWatcher#processNext - COMPLETE", numeral(delta / 1000.0).format("0.000"))
