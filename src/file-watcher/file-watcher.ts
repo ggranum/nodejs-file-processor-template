@@ -1,7 +1,7 @@
 import * as fs from "fs"
 import {Injectable} from "injection-js"
 import * as mkdirp from "mkdirp"
-import * as numeral from "numeral"
+import numeral from "numeral"
 import * as Path from "path"
 import "reflect-metadata"
 import {FileProcessor} from "../processor/file-processor"
@@ -45,7 +45,12 @@ export class FileWatcher {
     }
   }
 
-  private determineFilesToProcess(folderPath: string): FileInfo[] {
+  /**
+   *
+   * @param folderPath
+   * @VisibleForTesting
+   */
+  public determineFilesToProcess(folderPath: string): FileInfo[] {
     let result: FileInfo[] = []
     const fileNames: string[] = fs.readdirSync(folderPath)
     fileNames.forEach(name => {
@@ -137,7 +142,7 @@ export class FileWatcher {
 
   private async handleProcessSuccess(info: FileInfo, output: ProcessorOutput[], start: number): Promise<void> {
     this.archive(info)
-    this.saveOutput(info, output)
+    await this.saveOutput(info, output)
   }
 
   private async handleProcessFailure(info: FileInfo, e: any, start: number) {

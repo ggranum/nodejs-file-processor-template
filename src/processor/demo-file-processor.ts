@@ -6,7 +6,6 @@ import {FileProcessor} from "./file-processor"
 
 export class DemoFileProcessor extends FileProcessor {
 
-
   acceptPath(fileInfo: FileInfo): boolean {
     return true
   }

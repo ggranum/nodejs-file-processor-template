@@ -1,7 +1,7 @@
 //noinspection TypeScriptPreferShortImport
-import { generatePushID } from "./generate-push-id";
+import { generatePushID } from "../../src/util/generate-push-id";
 
-describe("tanj.util.common.core.generate-push-id", () => {
+describe("generate-push-id", () => {
 
   it("Generates 20 char long identifiers", () => {
     const key = generatePushID();
@@ -11,6 +11,7 @@ describe("tanj.util.common.core.generate-push-id", () => {
 
   it("Generates many unique identifiers per second", () => {
     const count = 100;
+    const start = new Date().getTime()
 
     const keyAry = [];
     const keyMap = {};
@@ -19,6 +20,10 @@ describe("tanj.util.common.core.generate-push-id", () => {
       keyAry.push(key);
       (<any>keyMap)[ key ] = true;
     }
+    const end = new Date().getTime()
+    const delta = end - start;
     expect(keyAry.length).toBeDefined();
+
+    expect(delta).toBeLessThan(10);
   });
 });

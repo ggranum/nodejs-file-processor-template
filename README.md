@@ -22,7 +22,6 @@ Assuming you're starting from zero, you'll need a few things. NodeJs, Yarn, a de
 * Git: https://git-scm.com/downloads (or perhaps https://desktop.github.com if you prefer)
 * WebStorm: https://www.jetbrains.com/webstorm/download/
 * nodeenv: https://github.com/nodenv/nodenv
-* Yarn: https://yarnpkg.com/en/docs/install
 
 Once you've installed all of the above, clone this project and get started:
 
@@ -31,6 +30,6 @@ mkdir -p ~/github/youAtGithub/
 cd ~/github/youAtGithub/
 git clone git@github.com:ggranum/nodejs-file-processor-template.git
 cd nodejs-file-processor-template
-yarn install
+npm install
 
 ```

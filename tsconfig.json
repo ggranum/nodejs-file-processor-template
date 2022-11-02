@@ -1,6 +1,9 @@
 {
   "compileOnSave"  : false,
   "compilerOptions": {
+    "module": "ES2020",
+    "target": "ES2020",
+    "esModuleInterop": true,
     "alwaysStrict"              : true,
     "baseUrl"                   : ".",
     "declaration"               : false,
@@ -25,10 +28,12 @@
       ]
     },
     "pretty"                    : true,
-    "strictNullChecks"          : true,
-    "target"                    : "esnext"
+    "strictNullChecks"          : true
   },
   "include": [
-    "src"
-  ]
+    "src", "spec"
+  ],
+  "ts-node": {
+    "transpileOnly": true
+  }
 }
