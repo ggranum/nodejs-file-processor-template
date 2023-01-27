@@ -1,10 +1,4 @@
 /**
- * Marker interface for endpoints etc that have been implemented and are
- * ready for integration/testing/use.
- */
-export interface Implemented {}
-
-/**
  * A marker interface to call out a type that is always a number, but is wrapped as a string
  */
 export type NumberString = string;
