@@ -33,7 +33,10 @@
   "include": [
     "src", "spec"
   ],
-  "ts-node": {
-    "transpileOnly": true
+  "ts-node"        : {
+    "transpileOnly"  : true,
+    "compilerOptions": {
+      "module": "commonjs"
+    }
   }
 }
