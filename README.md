@@ -12,7 +12,7 @@ It also demonstrates file handling, injection, using Typescript with NodeJS (whi
 
 ## Getting Started
 
-Assuming you're starting from zero, you'll need a few things. NodeJs, Yarn, a development environment. Links follow.
+Assuming you're starting from zero, you'll need a few things. NodeJs, a development environment. Links follow.
 
 
 ### Supporting Tools
@@ -26,8 +26,12 @@ Once you've installed all of the above, clone this project and get started:
 ```bash
 mkdir -p ~/github/youAtGithub/
 cd ~/github/youAtGithub/
-git clone git@github.com:ggranum/nodejs-file-processor-template.git
-cd nodejs-file-processor-template
+git clone git@github.com:ggranum/nodejs-file-processor-template.git my-file-processor
+cd my-file-processor
+# Remove the git directory so you can make this project yours
+rm -rf ./.git
+git init .
+git add .
+git commit -am "My New project, cloned from git@github.com:ggranum/nodejs-file-processor-template.git"
 npm install
-
 ```

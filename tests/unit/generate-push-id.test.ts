@@ -27,3 +27,38 @@ describe("generate-push-id", () => {
     expect(delta).toBeLessThan(10);
   });
 });
+
+
+
+describe("scratch", () => {
+
+  function mult(x=0, y=0) {
+    return x * y;
+  }
+
+  function encode(text="") {
+    if(text.length === 0){
+      return ''
+    }
+
+    let result = ""
+    let L = text[0];
+    let count = 1;
+    for (let i = 1; i < text.length; i++) {
+       if(text[i] === L){
+         count++
+       } else {
+         result = result + count + L;
+         L = text[i];
+         count = 1;
+       }
+    }
+    result = result + count + L;
+
+    return result;
+  }
+  it("Works", () => {
+    var foo = encode("a")
+    expect(foo).toBe("1a");//, 'Key length should be 20 characters')
+  });
+});
